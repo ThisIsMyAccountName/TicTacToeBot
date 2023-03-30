@@ -1,0 +1,7 @@
+packages: .
+
+source-repository-package
+    type: git
+    location: https://github.com/brendanhay/gogol
+    subdir: lib/gogol-core
+    tag: 494098af1709d32b75b0be41157547ae7a2bd89d
