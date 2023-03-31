@@ -25,7 +25,8 @@ import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO, modifyTVar')
 
 import DataTypes
 import ExampleUtils (getToken)
-import TicTacToe (boardToList, newGame, playMove, bestMove, isGameOver, availableMoves, isWinner, isDraw, playBotMove)
+import ConnectFour (connectFour, newConnectFour, boardToList)
+import TicTacToe (newGame, playMove, bestMove, isGameOver, availableMoves, isWinner, isDraw, playBotMove)
 
 main :: IO ()
 main = do
@@ -85,6 +86,12 @@ eventHandler gameStatesVar event = case event of
                         R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 ++ [restartButton]
                       }))
                 pure ()
+            -- "!c4" -> do
+            --   void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
+            --     def { 
+            --           R.messageDetailedContent = (packBoard newConnectFour),
+            --           R.messageDetailedComponents = Just $ sevenActionRows ++ [restartButton]
+            --         }))
             "!help" -> sendMessage m "!play <move> - play a move"
             _ -> sendMessage m "invalid command\n!help to see all commands"
 
@@ -159,6 +166,23 @@ boardToActionRows (board, _) x y =
     Nothing) 
     <$> [1 .. x]) <$> [1 .. y]
 
+-- sevenActionRows :: [ActionRow]
+-- -- makes a 2x4 grid of buttons
+-- sevenActionRows = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ "c4 " <> show x <> show y) False ButtonStyleSecondary (Just $ mapXYToCol x y) Nothing) <$> [1 .. 4]) <$> [1 .. 2]
+-- --sevenActionRows = [ActionRowButtons $ (\x -> Button (T.pack $ "c4 " <> show x) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 7]]
+-- mapXYToCol :: Int -> Int -> Text
+-- mapXYToCol 1 1 = "__RESTART__"
+-- mapXYToCol 1 2 = "__1___"
+-- mapXYToCol 2 2 =  "___2___"
+-- mapXYToCol 2 1 =  "___3___"
+-- mapXYToCol 3 2 =  "___4___"
+-- mapXYToCol 3 1 =  "___5___"
+-- mapXYToCol 4 2 =  "___6___"
+-- mapXYToCol 4 1 =  "___7___"
+-- --the same as the fucntion above but with the datatype ActionowSelectMenu
+-- sevenActionRowsSelect :: [ActionRow]
+-- sevenActionRowsSelect = [ActionRowSelectMenu $ SelectMenu "test" False [(mkSelectOption "test1" "test2")] Nothing Nothing Nothing]
+
 disableAllButtons :: [ActionRow] -> [ActionRow]
 disableAllButtons = 
   map (\(ActionRowButtons buttons) -> 
@@ -216,25 +240,6 @@ parseMove input gameState =
 
 -- MAIN HELPERS
 
-executeMove :: GameState -> (Int, Int) -> Message -> TVar (Map.Map UserId GameState) -> DiscordHandler ()
-executeMove gameState@(board, player) move m gameStatesVar = do
-  let afterMove@(board, _) = playMove gameState move
-  case isGameOver board of
-    (Just result) -> do
-      case result of
-        Win -> sendMessage m "you won!"
-        Loss -> sendMessage m "you lost!"
-        Draw -> sendMessage m "draw!"
-      sendMessages m [packBoard afterMove, "starting new game...", packBoard newGame]
-      updateMapState m gameStatesVar newGame
-      pure ()
-    (Nothing) -> do
-      case player of
-        X -> executeMove afterMove (bestMove afterMove) m gameStatesVar
-        O -> do
-          sendMessage m $ packBoard afterMove
-          updateMapState m gameStatesVar afterMove
-          pure ()
 
 editIntercation :: InteractionId -> InteractionToken -> Text -> GameState -> Bool -> ([ActionRow] -> [ActionRow]) -> Int -> Int -> DiscordHandler ()
 editIntercation interactionId interactionToken text game isDone func x y = 
@@ -242,6 +247,26 @@ editIntercation interactionId interactionToken text game isDone func x y =
     (InteractionResponseUpdateMessage (interactionResponseMessageBasic text) {
       interactionResponseMessageComponents = 
         Just $ func (boardToActionRows game x y) ++ if isDone then [restartButton] else []}))
+
+-- executeMove :: GameState -> (Int, Int) -> Message -> TVar (Map.Map UserId GameState) -> DiscordHandler ()
+-- executeMove gameState@(board, player) move m gameStatesVar = do
+--   let afterMove@(board, _) = playMove gameState move
+--   case isGameOver board of
+--     (Just result) -> do
+--       case result of
+--         Win -> sendMessage m "you won!"
+--         Loss -> sendMessage m "you lost!"
+--         Draw -> sendMessage m "draw!"
+--       sendMessages m [packBoard afterMove, "starting new game...", packBoard newGame]
+--       updateMapState m gameStatesVar newGame
+--       pure ()
+--     (Nothing) -> do
+--       case player of
+--         X -> executeMove afterMove (bestMove afterMove) m gameStatesVar
+--         O -> do
+--           sendMessage m $ packBoard afterMove
+--           updateMapState m gameStatesVar afterMove
+--           pure ()
 
 -- case getGameState (userId $ messageAuthor m) currentGameStates of 
 --   Nothing -> do

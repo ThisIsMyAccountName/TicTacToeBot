@@ -33,6 +33,16 @@ makeConnectFourMove (r, c) = do
 playConnectFourMove :: GameState -> Position -> GameState
 playConnectFourMove gameState position = execState (makeConnectFourMove position) gameState
 
+cellToEmoji :: Cell -> String
+cellToEmoji Empty 		= ":white_square_button:"
+cellToEmoji (Taken X) 	= ":yellow_circle:" 
+cellToEmoji (Taken O) 	= ":red_circle:"
+
+boardToList :: Board -> [String]
+boardToList board = concatMap rowToList [1 .. nrows board]
+  where
+    rowToList r = [concatMap (\c -> cellToEmoji (getElem r c board)) [1 .. ncols board] ++ " "] ++ ["\n"]
+
 isWinningMove :: Board -> Player -> Position -> Bool
 isWinningMove board player (r, c) = any (fourInARow player) directions
   where

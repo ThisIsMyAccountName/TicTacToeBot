@@ -1,3 +1,5 @@
-# TicTacToeBot
+# TicTacToeDiscordBot
 
-You need to add you own keys to the bot and the server you want to use it in.
+Cabal run to start
+Edit the paths in 'app/ExampleUtils.hs' for the keys to get the bot to connect correctly
+app user ID games, is a differant version that keeps tracks of games per discord ID. Works, but is not nice.
