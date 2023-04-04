@@ -151,7 +151,7 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
             --           R.messageDetailedContent = (packBoard newConnectFour),
             --           R.messageDetailedComponents = Just $ sevenActionRows ++ [restartButton]
             --         }))
-            ["!help"] -> sendMessage m "!play <move> - play a move"
+            ["!help"] -> sendMessage m "!play to play against bot\n!play @user to play against another user\n!help to see all commands"
             _ -> do
               echo $ showT $ messageContent m
               sendMessage m "invalid command\n!help to see all commands"
@@ -281,7 +281,7 @@ restartButton ::  ActionRow
 restartButton = ActionRowButtons [Button "bot restart" False ButtonStylePrimary (Just "Restart") Nothing]
 
 restartButtonTwoPlayer ::  ActionRow
-restartButtonTwoPlayer = ActionRowButtons [Button "two restart" False ButtonStylePrimary (Just "Restart") Nothing]
+restartButtonTwoPlayer = ActionRowButtons [Button "two restart" False ButtonStylePrimary (Just "Resign") Nothing]
 
 colorForButton :: Board -> Int -> Int -> ButtonStyle
 colorForButton board x y = 
