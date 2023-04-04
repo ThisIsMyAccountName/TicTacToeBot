@@ -33,67 +33,128 @@ main = do
     tok <- getToken
     --connectFour newConnectFour
     gameStatesVar <- newTVarIO tictactoeState
+    twoPlayerGameStatesVar <- newTVarIO twoPlayerGameStates
     userFacingError <- runDiscord $ def
              { discordToken = tok
-             , discordOnEvent = eventHandler gameStatesVar
+             , discordOnEvent = eventHandler gameStatesVar twoPlayerGameStatesVar
              , discordOnLog = \s -> TIO.putStrLn s >> TIO.putStrLn ""
              }
     TIO.putStrLn userFacingError
 
-eventHandler :: TVar (GameState) -> Event -> DiscordHandler ()
-eventHandler gameStatesVar event = case event of
+eventHandler :: TVar (GameState) -> TVar (Map.Map UserId (UserId, GameState)) -> Event -> DiscordHandler ()
+eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
     Ready _ _ _ _ _ _ _ -> do
         echo "Bot ready"
         void $ restCall (R.CreateMessage 1084744206238621747 "<:pong:1084793665525919804>")
         pure () 
     InteractionCreate InteractionComponent {
-      componentData = click@ButtonData {componentDataCustomId = (T.take 3 -> "ttt")},
+      componentData = click@ButtonData {componentDataCustomId = (T.take 3 -> "bot")},
       interactionUser = MemberOrUser user,
       ..
     } -> do
       let move = buttonClickToMove click
+      let text = "bot "
       currentGameStates <- liftIO $ readTVarIO gameStatesVar
+      echo $ componentDataCustomId click
       case move of 
         Nothing -> do
           case componentDataCustomId click of
-            "ttt restart" -> do
+            "bot restart" -> do
               liftIO $ atomically $ modifyTVar' gameStatesVar  (\x-> newGame)
-              editIntercation interactionId interactionToken ":x: to move" newGame True id 3 3
+              editIntercation interactionId interactionToken ":x: to move" newGame True id 3 3 text [restartButton]
         Just move -> do
           let afterMove@(board,player) = playMove currentGameStates move
           if isWinner board X || isWinner board O
-            then editIntercation interactionId interactionToken (if player == X then ":o: wins" else ":x: wins") afterMove True disableAllButtons 3 3
+            then editIntercation interactionId interactionToken (if player == X then ":o: wins" else ":x: wins") afterMove True disableAllButtons 3 3 text [restartButton]
             else if isDraw board
-              then editIntercation interactionId interactionToken "Draw" afterMove True disableAllButtons 3 3
+              then editIntercation interactionId interactionToken "Draw" afterMove True disableAllButtons 3 3 text [restartButton]
               else do
                 let afterBotMove@(botBoard, botPlayer) = playBotMove afterMove
                 if isWinner botBoard X || isWinner botBoard O
-                  then editIntercation interactionId interactionToken (if botPlayer == O then ":x: wins" else ":o: wins") afterBotMove True disableAllButtons 3 3
+                  then editIntercation interactionId interactionToken (if botPlayer == O then ":x: wins" else ":o: wins") afterBotMove True disableAllButtons 3 3 text [restartButton]
                   else if isDraw botBoard
-                    then editIntercation interactionId interactionToken "Draw" afterBotMove True disableAllButtons 3 3
+                    then editIntercation interactionId interactionToken "Draw" afterBotMove True disableAllButtons 3 3 text [restartButton]
                     else do
                       liftIO $ atomically $ modifyTVar' gameStatesVar  (\x-> afterBotMove)
-                      editIntercation interactionId interactionToken (if botPlayer == X then ":x: to move" else ":o: to move") afterBotMove True disableUserButtons 3 3
+                      editIntercation interactionId interactionToken (if botPlayer == X then ":x: to move" else ":o: to move") afterBotMove True disableUserButtons 3 3 text [restartButton]
           pure ()
+    InteractionCreate InteractionComponent {
+      componentData = click@ButtonData {componentDataCustomId = (T.take 3 -> "two")},
+      interactionUser = MemberOrUser user,
+      ..
+    } -> do
+      twoPlayerStates <- liftIO $ readTVarIO twoPlayerGameStatesVar
+      case user of 
+        (Right _) -> pure () 
+        (Left guildMemb) -> do
+          let interactUser = memberUser guildMemb
+          case interactUser of 
+            Nothing -> pure ()
+            Just userID1 -> do
+              case getTwoPlayerGameState (userId userID1) twoPlayerStates of
+                Nothing -> pure ()
+                Just (userID2, game@(board,_)) -> do
+                  let move = buttonClickToMove click
+                  let text = "two "
+                  case move of 
+                    Nothing -> do
+                      case componentDataCustomId click of
+                        "two restart" -> do
+                          --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, newGame)
+                          --updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), newGame)
+                          deleteTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar
+                          deleteTwoPlayerMapState userID2 twoPlayerGameStatesVar
+                          editIntercation interactionId interactionToken ((showT $ userName userID1) <> " resigned the game!")  newGame True id 0 0 text []
+                    Just move -> do
+                      let afterMove@(board, player) = playMove game move
+                      if isWinner board X || isWinner board O
+                        then do
+                          --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
+                          updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                          editIntercation interactionId interactionToken (if player == X then (showT userID2 <> " Wins!") else (showT $ userName userID1 <> " Wins!")) afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
+                        else if isDraw board
+                          then do
+                            --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
+                            updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                            editIntercation interactionId interactionToken "Draw" afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
+                          else do
+                            --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
+                            updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                            editIntercation interactionId interactionToken (if player == X then (showT $ userName userID1) else showT userID2) afterMove True disableUserButtons 3 3 text [restartButtonTwoPlayer]
+                      pure ()
     MessageCreate m -> when (isCommand m && not (fromBot m)) $ do
         void $ restCall (R.CreateReaction (messageChannelId m, messageId m) "<:pong:1084793665525919804>")
         currentGameStates <- liftIO $ readTVarIO gameStatesVar
-        case messageContent m of
-            "!play" -> do
+        echo $ showT $ currentGameStates
+        case T.words $ messageContent m of
+            ["!play"] -> do
                 void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
                   def { 
-                        R.messageDetailedContent = ":x: to move",
-                        R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 ++ [restartButton]
+                        R.messageDetailedContent = ":x: to move against bot",
+                        R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 "bot " ++ [restartButton]
                       }))
                 pure ()
+            ["!play", player] -> do
+              let playerID = T.drop 2 (T.init player)
+              let playerIDInt = read $ T.unpack playerID :: UserId
+              updateTwoPlayerMapState (userId $ messageAuthor m) twoPlayerGameStatesVar (playerIDInt, newGame)
+              void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
+                def { 
+                      R.messageDetailedContent = userName (messageAuthor m) <> " to play as :x:",
+                      R.messageDetailedComponents = Just $ boardToActionRows newGame 3 3 "two " ++ [restartButtonTwoPlayer]
+                    }))
+              
+              pure()
             -- "!c4" -> do
             --   void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
             --     def { 
             --           R.messageDetailedContent = (packBoard newConnectFour),
             --           R.messageDetailedComponents = Just $ sevenActionRows ++ [restartButton]
             --         }))
-            "!help" -> sendMessage m "!play <move> - play a move"
-            _ -> sendMessage m "invalid command\n!help to see all commands"
+            ["!help"] -> sendMessage m "!play <move> - play a move"
+            _ -> do
+              echo $ showT $ messageContent m
+              sendMessage m "invalid command\n!help to see all commands"
 
                       
     _ -> pure ()
@@ -114,6 +175,21 @@ getGameState userID gameStates = Map.lookup userID gameStates
 
 updateMapState :: Message -> TVar (Map.Map UserId GameState) -> GameState -> DiscordHandler ()
 updateMapState m gameStatesVar game = liftIO $ atomically $ modifyTVar' gameStatesVar (updateGameState (userId $ messageAuthor m) game)
+
+twoPlayerGameStates :: Map.Map UserId (UserId, GameState)
+twoPlayerGameStates = Map.empty
+
+updateTwoPlayerGameState :: UserId -> UserId -> GameState -> Map.Map UserId (UserId, GameState) -> Map.Map UserId (UserId, GameState)
+updateTwoPlayerGameState userID1 userID2 gameState gameStates = Map.insert userID1 (userID2, gameState) gameStates
+
+getTwoPlayerGameState :: UserId -> Map.Map UserId (UserId, GameState) -> Maybe (UserId, GameState)
+getTwoPlayerGameState userID1 gameStates = Map.lookup userID1 gameStates
+
+updateTwoPlayerMapState :: UserId -> TVar (Map.Map UserId (UserId, GameState)) -> (UserId, GameState) -> DiscordHandler ()
+updateTwoPlayerMapState userID1 gameStatesVar (userID2, game) = liftIO $ atomically $ modifyTVar' gameStatesVar (updateTwoPlayerGameState userID1 userID2 game)
+
+deleteTwoPlayerMapState :: UserId -> TVar (Map.Map UserId (UserId, GameState)) -> DiscordHandler ()
+deleteTwoPlayerMapState userID1 gameStatesVar = liftIO $ atomically $ modifyTVar' gameStatesVar (Map.delete userID1)
 
 -- UTILS
 
@@ -153,14 +229,15 @@ pickRandomElem xs = do
   index <- randomRIO (0, length xs - 1)
   return (xs !! index)
 
-emptyBoard :: [ActionRow]
-emptyBoard = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ "ttt " <> show x <> show y) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 3]) <$> [1 .. 3]
+emptyBoard :: String -> [ActionRow]
+emptyBoard text = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ text <> show x <> show y) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 3]) <$> [1 .. 3]
 
-boardToActionRows :: GameState -> Int -> Int -> [ActionRow]
-boardToActionRows (board, _) x y = 
+boardToActionRows :: GameState -> Int -> Int -> String ->[ActionRow]
+boardToActionRows _ 0 0 _ = []
+boardToActionRows (board, _) x y text = 
   (\y -> ActionRowButtons $ 
   (\x -> Button 
-    (T.pack $ "ttt " <> show x <> show y) 
+    (T.pack $ text <> show x <> show y) 
     False 
     (colorForButton board x y) (Just $ buttonLogo board x y) 
     Nothing) 
@@ -200,8 +277,11 @@ disableUserButtons =
         else Button cid False style label Nothing) 
         buttons)
 
-restartButton :: ActionRow
-restartButton = ActionRowButtons [Button "ttt restart" False ButtonStylePrimary (Just "Restart") Nothing]
+restartButton ::  ActionRow
+restartButton = ActionRowButtons [Button "bot restart" False ButtonStylePrimary (Just "Restart") Nothing]
+
+restartButtonTwoPlayer ::  ActionRow
+restartButtonTwoPlayer = ActionRowButtons [Button "two restart" False ButtonStylePrimary (Just "Restart") Nothing]
 
 colorForButton :: Board -> Int -> Int -> ButtonStyle
 colorForButton board x y = 
@@ -241,12 +321,12 @@ parseMove input gameState =
 -- MAIN HELPERS
 
 
-editIntercation :: InteractionId -> InteractionToken -> Text -> GameState -> Bool -> ([ActionRow] -> [ActionRow]) -> Int -> Int -> DiscordHandler ()
-editIntercation interactionId interactionToken text game isDone func x y = 
+editIntercation :: InteractionId -> InteractionToken -> Text -> GameState -> Bool -> ([ActionRow] -> [ActionRow]) -> Int -> Int -> String -> [ActionRow] -> DiscordHandler ()
+editIntercation interactionId interactionToken text game isDone func x y buttonMark restart = 
   void $ restCall (R.CreateInteractionResponse interactionId interactionToken 
     (InteractionResponseUpdateMessage (interactionResponseMessageBasic text) {
       interactionResponseMessageComponents = 
-        Just $ func (boardToActionRows game x y) ++ if isDone then [restartButton] else []}))
+        Just $ func (boardToActionRows game x y buttonMark) ++ if isDone then restart else []}))
 
 -- executeMove :: GameState -> (Int, Int) -> Message -> TVar (Map.Map UserId GameState) -> DiscordHandler ()
 -- executeMove gameState@(board, player) move m gameStatesVar = do
