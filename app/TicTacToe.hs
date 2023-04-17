@@ -4,7 +4,7 @@ import Control.Monad.State
 import Data.Matrix (matrix, getElem, nrows, ncols, setElem, toList)
 import Data.List (intersperse, maximumBy, minimumBy)
 import Data.Ord (comparing)
-import System.Random (randomRIO)
+import Control.Monad.Random
 
 import DataTypes 
 
@@ -111,14 +111,3 @@ availableMoves gameState@(board,_) = [ (r, c) | r <- [1 .. 3], c <- [1 .. 3], le
 
 checkwinner :: GameState -> Maybe Player
 checkwinner (board, player) = undefined
-
--- randomMove :: GameState -> Position
--- randomMove gameState = 
---     let moves = availableMoves gameState
---         scores = map (\move -> (minimax (playMove gameState move) 0, move)) moves
---         bestscore = fst $ maximumBy (comparing fst) scores
---         bestMoves = filter (\(score, move) -> score == bestscore) scores
---         randmove = do
---             randomIndex <- randomRIO (0, length bestMoves - 1)
---             return (bestMoves !! randomIndex)
---     in snd $ snd randmove

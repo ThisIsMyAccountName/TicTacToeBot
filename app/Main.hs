@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
 import Data.Matrix (Matrix, matrix, getElem, nrows, ncols, setElem, toList)
+import Text.Megaparsec (Parsec, (<|>), try, parse, errorBundlePretty)
 import System.Random (randomRIO)
 
 import Discord
@@ -25,13 +26,12 @@ import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO, modifyTVar')
 
 import DataTypes
 import ExampleUtils (getToken)
-import ConnectFour (connectFour, newConnectFour, boardToList)
 import TicTacToe (newGame, playMove, bestMove, isGameOver, availableMoves, isWinner, isDraw, playBotMove)
+import Parser (commandParser)
 
 main :: IO ()
 main = do
     tok <- getToken
-    --connectFour newConnectFour
     gameStatesVar <- newTVarIO tictactoeState
     twoPlayerGameStatesVar <- newTVarIO twoPlayerGameStates
     userFacingError <- runDiscord $ def
@@ -125,36 +125,31 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
     MessageCreate m -> when (isCommand m && not (fromBot m)) $ do
         void $ restCall (R.CreateReaction (messageChannelId m, messageId m) "<:pong:1084793665525919804>")
         currentGameStates <- liftIO $ readTVarIO gameStatesVar
-        echo $ showT $ currentGameStates
-        case T.words $ messageContent m of
-            ["!play"] -> do
+        case parse commandParser "" (T.unpack $ messageContent m) of
+          Left bundle -> do
+            --echo $ errorBundlePretty bundle
+            sendMessage m "Invalid command\n!help to see all commands"
+          Right command ->
+            case command of
+              PlayBot -> do
                 void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
                   def { 
                         R.messageDetailedContent = ":x: to move against bot",
                         R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 "bot " ++ [restartButton]
                       }))
+                pure () 
+              PlayUser playerID -> do
+                updateTwoPlayerMapState (userId $ messageAuthor m) twoPlayerGameStatesVar (playerID, newGame)
+                void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
+                  def { 
+                        R.messageDetailedContent = userName (messageAuthor m) <> " to play as :x:",
+                        R.messageDetailedComponents = Just $ boardToActionRows newGame 3 3 "two " ++ [restartButtonTwoPlayer]
+                      }))
+                
+                pure()
+              Help -> do
+                sendMessage m "!play to play against bot\n!play @user to play against another user\n!help to see all commands"
                 pure ()
-            ["!play", player] -> do
-              let playerID = T.drop 2 (T.init player)
-              let playerIDInt = read $ T.unpack playerID :: UserId
-              updateTwoPlayerMapState (userId $ messageAuthor m) twoPlayerGameStatesVar (playerIDInt, newGame)
-              void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
-                def { 
-                      R.messageDetailedContent = userName (messageAuthor m) <> " to play as :x:",
-                      R.messageDetailedComponents = Just $ boardToActionRows newGame 3 3 "two " ++ [restartButtonTwoPlayer]
-                    }))
-              
-              pure()
-            -- "!c4" -> do
-            --   void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
-            --     def { 
-            --           R.messageDetailedContent = (packBoard newConnectFour),
-            --           R.messageDetailedComponents = Just $ sevenActionRows ++ [restartButton]
-            --         }))
-            ["!help"] -> sendMessage m "!play to play against bot\n!play @user to play against another user\n!help to see all commands"
-            _ -> do
-              echo $ showT $ messageContent m
-              sendMessage m "invalid command\n!help to see all commands"
 
                       
     _ -> pure ()
@@ -243,23 +238,6 @@ boardToActionRows (board, _) x y text =
     Nothing) 
     <$> [1 .. x]) <$> [1 .. y]
 
--- sevenActionRows :: [ActionRow]
--- -- makes a 2x4 grid of buttons
--- sevenActionRows = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ "c4 " <> show x <> show y) False ButtonStyleSecondary (Just $ mapXYToCol x y) Nothing) <$> [1 .. 4]) <$> [1 .. 2]
--- --sevenActionRows = [ActionRowButtons $ (\x -> Button (T.pack $ "c4 " <> show x) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 7]]
--- mapXYToCol :: Int -> Int -> Text
--- mapXYToCol 1 1 = "__RESTART__"
--- mapXYToCol 1 2 = "__1___"
--- mapXYToCol 2 2 =  "___2___"
--- mapXYToCol 2 1 =  "___3___"
--- mapXYToCol 3 2 =  "___4___"
--- mapXYToCol 3 1 =  "___5___"
--- mapXYToCol 4 2 =  "___6___"
--- mapXYToCol 4 1 =  "___7___"
--- --the same as the fucntion above but with the datatype ActionowSelectMenu
--- sevenActionRowsSelect :: [ActionRow]
--- sevenActionRowsSelect = [ActionRowSelectMenu $ SelectMenu "test" False [(mkSelectOption "test1" "test2")] Nothing Nothing Nothing]
-
 disableAllButtons :: [ActionRow] -> [ActionRow]
 disableAllButtons = 
   map (\(ActionRowButtons buttons) -> 
@@ -327,34 +305,3 @@ editIntercation interactionId interactionToken text game isDone func x y buttonM
     (InteractionResponseUpdateMessage (interactionResponseMessageBasic text) {
       interactionResponseMessageComponents = 
         Just $ func (boardToActionRows game x y buttonMark) ++ if isDone then restart else []}))
-
--- executeMove :: GameState -> (Int, Int) -> Message -> TVar (Map.Map UserId GameState) -> DiscordHandler ()
--- executeMove gameState@(board, player) move m gameStatesVar = do
---   let afterMove@(board, _) = playMove gameState move
---   case isGameOver board of
---     (Just result) -> do
---       case result of
---         Win -> sendMessage m "you won!"
---         Loss -> sendMessage m "you lost!"
---         Draw -> sendMessage m "draw!"
---       sendMessages m [packBoard afterMove, "starting new game...", packBoard newGame]
---       updateMapState m gameStatesVar newGame
---       pure ()
---     (Nothing) -> do
---       case player of
---         X -> executeMove afterMove (bestMove afterMove) m gameStatesVar
---         O -> do
---           sendMessage m $ packBoard afterMove
---           updateMapState m gameStatesVar afterMove
---           pure ()
-
--- case getGameState (userId $ messageAuthor m) currentGameStates of 
---   Nothing -> do
---     updateMapState m gameStatesVar newGame
---     sendMessages m ["starting game... (you play as O)", packBoard newGame]
---   Just game -> do
---     let move = parseMove x game
---     case move of
---       Nothing -> sendMessage m "invalid move"
---       Just move -> do
---         executeMove game move m gameStatesVar

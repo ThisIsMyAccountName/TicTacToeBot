@@ -5,3 +5,6 @@ Edit the paths in 'app/ExampleUtils.hs' for the keys to get the bot to connect c
 app user ID games, is a differant version that keeps tracks of games per discord ID. Works, but is not nice.
 
 And change it channel id in Main.hs on line 47
+
+
+
