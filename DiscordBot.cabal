@@ -44,7 +44,7 @@ executable DiscordBot
                     bytestring,
                     containers,
                     stm,
-                    random,
+                    MonadRandom
                     
 
     hs-source-dirs:   app

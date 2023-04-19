@@ -10,6 +10,16 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_TicTacToeBot */
+/* package MonadRandom-0.5.3 */
+#ifndef VERSION_MonadRandom
+#define VERSION_MonadRandom "0.5.3"
+#endif /* VERSION_MonadRandom */
+#ifndef MIN_VERSION_MonadRandom
+#define MIN_VERSION_MonadRandom(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  5 || \
+  (major1) == 0 && (major2) == 5 && (minor) <= 3)
+#endif /* MIN_VERSION_MonadRandom */
 /* package base-4.14.3.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.14.3.0"
@@ -80,16 +90,6 @@
   (major1) == 2 && (major2) <  2 || \
   (major1) == 2 && (major2) == 2 && (minor) <= 2)
 #endif /* MIN_VERSION_mtl */
-/* package random-1.2.1.1 */
-#ifndef VERSION_random
-#define VERSION_random "1.2.1.1"
-#endif /* VERSION_random */
-#ifndef MIN_VERSION_random
-#define MIN_VERSION_random(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  2 || \
-  (major1) == 1 && (major2) == 2 && (minor) <= 1)
-#endif /* MIN_VERSION_random */
 /* package stm-2.5.0.1 */
 #ifndef VERSION_stm
 #define VERSION_stm "2.5.0.1"
