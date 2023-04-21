@@ -12,9 +12,9 @@ import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
-import Data.Matrix (Matrix, matrix, getElem, nrows, ncols, setElem, toList)
-import Text.Megaparsec (Parsec, (<|>), try, parse, errorBundlePretty)
-import System.Random (randomRIO)
+import Data.Matrix (getElem)
+import Text.Megaparsec (Parsec, parse)
+import Control.Monad.Random
 
 import Discord
 import Discord.Types
@@ -26,7 +26,7 @@ import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO, modifyTVar')
 
 import DataTypes
 import ExampleUtils (getToken)
-import TicTacToe (newGame, playMove, bestMove, isGameOver, availableMoves, isWinner, isDraw, playBotMove)
+import TicTacToe (newGame, playMove, availableMoves, isWinner, isDraw, playBotMove)
 import Parser (commandParser)
 
 main :: IO ()
@@ -55,7 +55,6 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
       let move = buttonClickToMove click
       let text = "bot "
       currentGameStates <- liftIO $ readTVarIO gameStatesVar
-      echo $ componentDataCustomId click
       case move of 
         Nothing -> do
           case componentDataCustomId click of
@@ -84,52 +83,46 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
       ..
     } -> do
       twoPlayerStates <- liftIO $ readTVarIO twoPlayerGameStatesVar
-      case user of 
-        (Right _) -> pure () 
-        (Left guildMemb) -> do
-          let interactUser = memberUser guildMemb
-          case interactUser of 
+      case userParse user of
+        Nothing -> pure ()
+        Just userID1 -> do
+          case getTwoPlayerGameState (userId userID1) twoPlayerStates of
             Nothing -> pure ()
-            Just userID1 -> do
-              case getTwoPlayerGameState (userId userID1) twoPlayerStates of
-                Nothing -> pure ()
-                Just (userID2, game@(board,_)) -> do
-                  let move = buttonClickToMove click
-                  let text = "two "
+            Just (userID2, game@(board,_)) -> do
+              let move = buttonClickToMove click
+              let text = "two "
+              result <- restCall $ R.GetUser userID2
+              case result of
+                Left _ -> pure ()
+                Right user2 -> do
                   case move of 
                     Nothing -> do
                       case componentDataCustomId click of
                         "two restart" -> do
-                          --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, newGame)
-                          --updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), newGame)
                           deleteTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar
                           deleteTwoPlayerMapState userID2 twoPlayerGameStatesVar
-                          editIntercation interactionId interactionToken ((showT $ userName userID1) <> " resigned the game!")  newGame True id 0 0 text []
+                          editIntercation interactionId interactionToken (userName userID1 <> " resigned the game!\n" <> userName user2 <> " Wins the game!")  newGame True id 0 0 text []
                     Just move -> do
                       let afterMove@(board, player) = playMove game move
-                      if isWinner board X || isWinner board O
+                      let xWinner = isWinner board X
+                      if xWinner || isWinner board O
                         then do
-                          --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
                           updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
-                          editIntercation interactionId interactionToken (if player == X then (showT userID2 <> " Wins!") else (showT $ userName userID1 <> " Wins!")) afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
+                          editIntercation interactionId interactionToken ((if xWinner then userName userID1 else userName user2) <> " Wins the game!") afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
                         else if isDraw board
                           then do
-                            --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
                             updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
-                            editIntercation interactionId interactionToken "Draw" afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
+                            editIntercation interactionId interactionToken "Game ended in a draw" afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
                           else do
-                            --updateTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar (userID2, afterMove)
                             updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
-                            editIntercation interactionId interactionToken (if player == X then (showT $ userName userID1) else showT userID2) afterMove True disableUserButtons 3 3 text [restartButtonTwoPlayer]
-                      pure ()
-    MessageCreate m -> when (isCommand m && not (fromBot m)) $ do
-        void $ restCall (R.CreateReaction (messageChannelId m, messageId m) "<:pong:1084793665525919804>")
-        currentGameStates <- liftIO $ readTVarIO gameStatesVar
+                            editIntercation interactionId interactionToken ((if player == X then userName userID1 else userName user2) <> "'s turn") afterMove True disableUserButtons 3 3 text [restartButtonTwoPlayer]
+                  pure ()
+    MessageCreate m -> when (not (fromBot m)) $ do
         case parse commandParser "" (T.unpack $ messageContent m) of
-          Left bundle -> do
-            --echo $ errorBundlePretty bundle
-            sendMessage m "Invalid command\n!help to see all commands"
-          Right command ->
+          Left bundle -> sendMessage m "Invalid command\n!help to see all commands"
+          Right command -> do
+            void $ restCall (R.CreateReaction (messageChannelId m, messageId m) "<:pong:1084793665525919804>")
+            currentGameStates <- liftIO $ readTVarIO gameStatesVar
             case command of
               PlayBot -> do
                 void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
@@ -159,17 +152,17 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
 tictactoeState :: GameState
 tictactoeState = newGame
 
-initialGameStates :: Map.Map UserId GameState
-initialGameStates = Map.empty
+-- initialGameStates :: Map.Map UserId GameState
+-- initialGameStates = Map.empty
 
-updateGameState :: UserId -> GameState -> Map.Map UserId GameState -> Map.Map UserId GameState
-updateGameState userID gameState gameStates = Map.insert userID gameState gameStates
+-- updateGameState :: UserId -> GameState -> Map.Map UserId GameState -> Map.Map UserId GameState
+-- updateGameState userID gameState gameStates = Map.insert userID gameState gameStates
 
-getGameState :: UserId -> Map.Map UserId GameState -> Maybe GameState
-getGameState userID gameStates = Map.lookup userID gameStates
+-- getGameState :: UserId -> Map.Map UserId GameState -> Maybe GameState
+-- getGameState userID gameStates = Map.lookup userID gameStates
 
-updateMapState :: Message -> TVar (Map.Map UserId GameState) -> GameState -> DiscordHandler ()
-updateMapState m gameStatesVar game = liftIO $ atomically $ modifyTVar' gameStatesVar (updateGameState (userId $ messageAuthor m) game)
+-- updateMapState :: Message -> TVar (Map.Map UserId GameState) -> GameState -> DiscordHandler ()
+-- updateMapState m gameStatesVar game = liftIO $ atomically $ modifyTVar' gameStatesVar (updateGameState (userId $ messageAuthor m) game)
 
 twoPlayerGameStates :: Map.Map UserId (UserId, GameState)
 twoPlayerGameStates = Map.empty
@@ -188,8 +181,8 @@ deleteTwoPlayerMapState userID1 gameStatesVar = liftIO $ atomically $ modifyTVar
 
 -- UTILS
 
-commands :: [Text]
-commands = ["!play", "!help", "!"]
+-- commands :: [Text]
+-- commands = ["!play", "!help", "!"]
 
 sendMessage :: Message -> Text -> DiscordHandler ()
 sendMessage m msg = void $ restCall (R.CreateMessage (messageChannelId m) msg)
@@ -200,9 +193,6 @@ sendMessages m (msg:msgs) = do
   void $ restCall (R.CreateMessage (messageChannelId m) msg)
   sendMessages m msgs
 
-packBoard :: GameState -> Text
-packBoard state = T.concat $ (map T.pack $ boardToList $ fst state)
-
 echo :: MonadIO m => Text -> m ()
 echo = liftIO . TIO.putStrLn
 
@@ -212,20 +202,14 @@ showT = T.pack . show
 fromBot :: Message -> Bool
 fromBot = userIsBot . messageAuthor
 
-isPrefix :: Message -> Bool
-isPrefix = ("!" `isPrefixOf`) . toLower . messageContent
+-- isPrefix :: Message -> Bool
+-- isPrefix = ("!" `isPrefixOf`) . toLower . messageContent
 
-isCommand :: Message -> Bool
-isCommand m = any (`isPrefixOf` toLower (messageContent m)) commands
+-- isCommand :: Message -> Bool
+-- isCommand m = any (`isPrefixOf` toLower (messageContent m)) commands
 
-pickRandomElem :: [a] -> IO a
-pickRandomElem [] = error "Cannot pick an element from an empty list."
-pickRandomElem xs = do
-  index <- randomRIO (0, length xs - 1)
-  return (xs !! index)
-
-emptyBoard :: String -> [ActionRow]
-emptyBoard text = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ text <> show x <> show y) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 3]) <$> [1 .. 3]
+-- emptyBoard :: String -> [ActionRow]
+-- emptyBoard text = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ text <> show x <> show y) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 3]) <$> [1 .. 3]
 
 boardToActionRows :: GameState -> Int -> Int -> String ->[ActionRow]
 boardToActionRows _ 0 0 _ = []
@@ -282,20 +266,6 @@ buttonClickToMove (ButtonData cid) =
     else Nothing
 
 
-parseMove :: Text -> GameState -> Maybe (Int, Int)
-parseMove input gameState = 
-  case input of 
-    "1" -> if (1,1) `elem` availableMoves gameState then Just (1,1) else Nothing
-    "2" -> if (1,2) `elem` availableMoves gameState then Just (1,2) else Nothing
-    "3" -> if (1,3) `elem` availableMoves gameState then Just (1,3) else Nothing
-    "4" -> if (2,1) `elem` availableMoves gameState then Just (2,1) else Nothing
-    "5" -> if (2,2) `elem` availableMoves gameState then Just (2,2) else Nothing
-    "6" -> if (2,3) `elem` availableMoves gameState then Just (2,3) else Nothing
-    "7" -> if (3,1) `elem` availableMoves gameState then Just (3,1) else Nothing
-    "8" -> if (3,2) `elem` availableMoves gameState then Just (3,2) else Nothing
-    "9" -> if (3,3) `elem` availableMoves gameState then Just (3,3) else Nothing
-    _ -> Nothing
-
 -- MAIN HELPERS
 
 
@@ -305,3 +275,10 @@ editIntercation interactionId interactionToken text game isDone func x y buttonM
     (InteractionResponseUpdateMessage (interactionResponseMessageBasic text) {
       interactionResponseMessageComponents = 
         Just $ func (boardToActionRows game x y buttonMark) ++ if isDone then restart else []}))
+userParse :: Either GuildMember User -> Maybe User
+userParse user = case user of
+  (Right _) -> Nothing
+  (Left guildMemb) -> do
+    case memberUser guildMemb of
+      Nothing -> Nothing
+      (Just user) -> Just user
