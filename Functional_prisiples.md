@@ -36,15 +36,18 @@ These techniques contribute to the expressiveness, conciseness, and readability 
 
 
 Tech used in TicTacToe:
-Algebraic Data Types: The code makes use of algebraic data types to represent the board, game state, and cell status. In the DataTypes module, custom data types for Cell, Player, Result, Board, and GameState are defined, providing a strong foundation for the game logic. For example, Cell is defined as Empty or Taken Player, and Player is defined as X or O. These algebraic data types make the code easier to read and understand.
 
-Monads: The code uses the State monad and the StateT monad transformer to handle game state updates. The State monad is used in functions like makeMove and playMove to update the game state and manage side effects in a clean and functional way.
+The TicTacToe code employs various techniques to enhance its functionality and clarity.
 
-Lazy Evaluation: Lazy evaluation is a core feature of Haskell, and it is utilized throughout the code. For example, in the minimax function, Haskell's lazy evaluation ensures that the entire tree of possible game states is not fully explored, but only as needed. This leads to performance improvements and ensures that the code runs efficiently.
+To represent the game state, board, and cell status, algebraic data types are utilized. Custom data types are defined for Cell, Player, Result, Board, and GameState in the DataTypes module. This provides a sturdy foundation for the game logic and makes the code easy to comprehend. For instance, Cell is defined as either Empty or Taken by a Player, and Player is defined as X or O.
 
-List Comprehensions: In the availableMoves function, a list comprehension is used to generate the list of all legal moves available in the current game state. This demonstrates the expressive power of Haskell and functional programming, allowing for concise and efficient code.
+To update the game state, the State monad and StateT monad transformer are employed in the code. They manage side effects and update game state in a clean and functional way, with functions such as makeMove and playMove using the State monad.
 
-Higher-order functions: Functions like map, maximumBy, minimumBy, and any are used throughout the code. These higher-order functions take other functions as arguments and are an important part of functional programming in Haskell. They allow for more concise, expressive, and maintainable code.
+The code also employs lazy evaluation, a core feature of Haskell, which ensures that the code runs efficiently by only exploring the necessary parts of the game state tree in the minimax function.
+
+List comprehension is used in the availableMoves function to generate the list of all legal moves. This expressive technique allows for concise and efficient code in functional programming.
+
+Finally, higher-order functions such as map, maximumBy, minimumBy, and any are used throughout the code. These functions take other functions as arguments, which is an important feature of functional programming in Haskell, enabling concise, expressive, and maintainable code.
 
 
 Parser tech
@@ -62,12 +65,14 @@ Modularity: The code is organized into modular functions, each responsible for p
 
 type tech
 
-Algebraic Data Types: The code makes use of algebraic data types to represent the game's core entities, such as Player, Result, and Cell. For example, Player is defined as X | O, and Cell is defined as Empty | Taken Player. These algebraic data types make the code more expressive and easier to understand.
+The code for the Tic Tac Toe game employs various techniques to make it more expressive and easy to understand.
 
-Type Synonyms: The code uses type synonyms to provide more descriptive names for certain data types. For example, Board is defined as Matrix Cell, and GameState is defined as (Board, Player). Type synonyms improve code readability and help clarify the purpose of each data type.
+Algebraic data types are used to represent the game's core entities, such as Player, Result, and Cell. For instance, Player is defined as either X or O, and Cell is defined as either Empty or Taken by a Player. This makes the code more expressive and easier to comprehend.
 
-Type Aliases: The CommandParser type alias is used to simplify the type signature of the command parser functions. By defining CommandParser as Parsec Void String, the code becomes more readable and easier to maintain.
+Type synonyms are used to provide more descriptive names for certain data types. Board is defined as Matrix Cell, and GameState is defined as (Board, Player), making the code more readable and helping to clarify the purpose of each data type.
 
-Importing External Types: The code imports the Matrix type from the Data.Matrix module and the UserId type from the Discord.Types module. These external types are used in the definitions of Board and PlayUser, respectively. Importing external types allows the code to leverage existing libraries and simplifies the implementation of the Tic Tac Toe game.
+Type aliases are used to simplify the type signature of command parser functions. The CommandParser type alias is defined as Parsec Void String, which enhances code readability and ease of maintenance.
 
-Parsing-related Data Types: The Command data type is defined as an algebraic data type with three constructors: PlayBot, PlayUser UserId, and Help. This data type is used to represent the different commands that the command parser can recognize. The CommandParser type alias, as mentioned earlier, simplifies the type signature for command parser functions.
+External types such as Matrix type from the Data.Matrix module and the UserId type from the Discord.Types module are imported to simplify the Tic Tac Toe game's implementation. The external types allow the code to leverage existing libraries and make it more manageable.
+
+The Command data type is defined as an algebraic data type with three constructors: PlayBot, PlayUser UserId, and Help. It is used to represent the different commands recognized by the command parser. The CommandParser type alias simplifies the type signature for command parser functions.

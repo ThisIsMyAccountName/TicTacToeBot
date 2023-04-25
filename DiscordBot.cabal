@@ -27,7 +27,8 @@ executable DiscordBot
     -- Modules included in this executable, other than Main.
     other-modules:  TicTacToe,
                     ExampleUtils,
-                    DataTypes
+                    DataTypes,
+                    Parser
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -44,7 +45,8 @@ executable DiscordBot
                     bytestring,
                     containers,
                     stm,
-                    MonadRandom
+                    MonadRandom,
+                    random,
                     
 
     hs-source-dirs:   app

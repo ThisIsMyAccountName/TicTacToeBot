@@ -7,7 +7,7 @@ import Control.Monad (when, void)
 import Control.Monad.IO.Class (MonadIO)
 import UnliftIO (liftIO)
 import UnliftIO.Concurrent
-import Data.Text (isPrefixOf, toLower, Text)
+import Data.Text (Text, isPrefixOf, toLower)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -25,8 +25,7 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO, modifyTVar')
 
 import DataTypes
-import ExampleUtils (getToken)
-import TicTacToe (newGame, playMove, availableMoves, isWinner, isDraw, playBotMove)
+import TicTacToe (newGame, playMove, isWinner, isDraw, playBotMove)
 import Parser (commandParser)
 
 main :: IO ()
@@ -152,18 +151,6 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
 tictactoeState :: GameState
 tictactoeState = newGame
 
--- initialGameStates :: Map.Map UserId GameState
--- initialGameStates = Map.empty
-
--- updateGameState :: UserId -> GameState -> Map.Map UserId GameState -> Map.Map UserId GameState
--- updateGameState userID gameState gameStates = Map.insert userID gameState gameStates
-
--- getGameState :: UserId -> Map.Map UserId GameState -> Maybe GameState
--- getGameState userID gameStates = Map.lookup userID gameStates
-
--- updateMapState :: Message -> TVar (Map.Map UserId GameState) -> GameState -> DiscordHandler ()
--- updateMapState m gameStatesVar game = liftIO $ atomically $ modifyTVar' gameStatesVar (updateGameState (userId $ messageAuthor m) game)
-
 twoPlayerGameStates :: Map.Map UserId (UserId, GameState)
 twoPlayerGameStates = Map.empty
 
@@ -181,17 +168,8 @@ deleteTwoPlayerMapState userID1 gameStatesVar = liftIO $ atomically $ modifyTVar
 
 -- UTILS
 
--- commands :: [Text]
--- commands = ["!play", "!help", "!"]
-
-sendMessage :: Message -> Text -> DiscordHandler ()
-sendMessage m msg = void $ restCall (R.CreateMessage (messageChannelId m) msg)
-
-sendMessages :: Message -> [Text] -> DiscordHandler ()
-sendMessages _ [] = pure ()
-sendMessages m (msg:msgs) = do
-  void $ restCall (R.CreateMessage (messageChannelId m) msg)
-  sendMessages m msgs
+getToken :: IO T.Text
+getToken = TIO.readFile "../keys/auth-token.secret"
 
 echo :: MonadIO m => Text -> m ()
 echo = liftIO . TIO.putStrLn
@@ -201,15 +179,6 @@ showT = T.pack . show
 
 fromBot :: Message -> Bool
 fromBot = userIsBot . messageAuthor
-
--- isPrefix :: Message -> Bool
--- isPrefix = ("!" `isPrefixOf`) . toLower . messageContent
-
--- isCommand :: Message -> Bool
--- isCommand m = any (`isPrefixOf` toLower (messageContent m)) commands
-
--- emptyBoard :: String -> [ActionRow]
--- emptyBoard text = (\y -> ActionRowButtons $ (\x -> Button (T.pack $ text <> show x <> show y) False ButtonStyleSecondary (Just "[ ]") Nothing) <$> [1 .. 3]) <$> [1 .. 3]
 
 boardToActionRows :: GameState -> Int -> Int -> String ->[ActionRow]
 boardToActionRows _ 0 0 _ = []
@@ -268,6 +237,14 @@ buttonClickToMove (ButtonData cid) =
 
 -- MAIN HELPERS
 
+sendMessage :: Message -> Text -> DiscordHandler ()
+sendMessage m msg = void $ restCall (R.CreateMessage (messageChannelId m) msg)
+
+sendMessages :: Message -> [Text] -> DiscordHandler ()
+sendMessages _ [] = pure ()
+sendMessages m (msg:msgs) = do
+  void $ restCall (R.CreateMessage (messageChannelId m) msg)
+  sendMessages m msgs
 
 editIntercation :: InteractionId -> InteractionToken -> Text -> GameState -> Bool -> ([ActionRow] -> [ActionRow]) -> Int -> Int -> String -> [ActionRow] -> DiscordHandler ()
 editIntercation interactionId interactionToken text game isDone func x y buttonMark restart = 
@@ -275,6 +252,7 @@ editIntercation interactionId interactionToken text game isDone func x y buttonM
     (InteractionResponseUpdateMessage (interactionResponseMessageBasic text) {
       interactionResponseMessageComponents = 
         Just $ func (boardToActionRows game x y buttonMark) ++ if isDone then restart else []}))
+
 userParse :: Either GuildMember User -> Maybe User
 userParse user = case user of
   (Right _) -> Nothing

@@ -4,7 +4,7 @@ import Control.Monad.State
 import Data.Matrix (matrix, getElem, nrows, ncols, setElem, toList)
 import Data.List (intersperse, maximumBy, minimumBy)
 import Data.Ord (comparing)
-import Control.Monad.Random
+import System.Random
 
 import DataTypes 
 
