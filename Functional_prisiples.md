@@ -1,13 +1,13 @@
-#####Here is a list of advanced functional techniques used in the whole project:
+##### Here is a list of advanced functional techniques used in the whole project:
 
-####Language Extensions:
-#####LambdaCase: 
+#### Language Extensions:
+##### LambdaCase: 
 - Allows pattern matching on lambda expressions.
-#####OverloadedStrings: 
+##### OverloadedStrings: 
 - Allows string literals to be overloaded.
-#####RecordWildCards: 
+##### RecordWildCards: 
 - Allows the use of wildcards in record patterns.
-#####ViewPatterns: 
+##### ViewPatterns: 
 - Enables pattern matching on the result of a function.
 
 ### Higher-order functions:
