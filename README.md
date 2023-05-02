@@ -33,7 +33,7 @@ With your changes saved, you can now run the project. You can do this using eith
 
 `cabal run`
 or
-`stack run` (not tested, but should be the same?)
+`stack run` (stack not tested, but should be the same?)
 
 This will compile the project and start the bot. The first time this can take some time as you might need to install alot of librarys and depadencies. The bot will then be online and listening for commands in the Discord server you added it to.
 
