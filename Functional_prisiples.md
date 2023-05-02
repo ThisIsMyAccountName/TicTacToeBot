@@ -1,4 +1,4 @@
-##### Here is a list of advanced functional techniques used in the whole project:
+### Here is a list of advanced functional techniques used in the whole project:
 
 #### Language Extensions:
 ##### LambdaCase: 
