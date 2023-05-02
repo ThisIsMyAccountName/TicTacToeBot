@@ -1,41 +1,46 @@
-Here is a list of advanced functional techniques used in the whole project:
+#####Here is a list of advanced functional techniques used in the whole project:
 
-Language Extensions:
-LambdaCase: Allows pattern matching on lambda expressions.
-OverloadedStrings: Allows string literals to be overloaded.
-RecordWildCards: Allows the use of wildcards in record patterns.
-ViewPatterns: Enables pattern matching on the result of a function.
+####Language Extensions:
+#####LambdaCase: 
+- Allows pattern matching on lambda expressions.
+#####OverloadedStrings: 
+- Allows string literals to be overloaded.
+#####RecordWildCards: 
+- Allows the use of wildcards in record patterns.
+#####ViewPatterns: 
+- Enables pattern matching on the result of a function.
 
-Higher-order functions:
-map, foldl, any, and other standard higher-order functions from Prelude are used.
+### Higher-order functions:
 
-Monads and monadic functions:
-DiscordHandler: A monad for Discord-related operations.
-MonadIO and liftIO: To lift IO actions into the DiscordHandler monad.
+#### Monads and monadic functions:
+##### DiscordHandler: 
+- A monad for Discord-related operations.
+##### MonadIO and liftIO: 
+- To lift IO actions into the DiscordHandler monad.
 Control.Monad functions like 'when' and 'void' are used for control flow and discarding results.
 
-Software Transactional Memory (STM):
-TVar: A transactional variable used for shared mutable state.
-newTVarIO, readTVarIO, modifyTVar': Functions to create, read, and modify transactional variables.
-atomically: To perform STM actions atomically.
+#### Software Transactional Memory (STM):
+##### TVar: 
+- A transactional variable used for shared mutable state.
+##### newTVarIO, readTVarIO, modifyTVar': 
+- Functions to create, read, and modify transactional variables.
+##### atomically: 
+- To perform STM actions atomically.
 
-Function composition:
+##### Function composition:
 The use of (.) for function composition is present throughout the code.
 
-Partial function application:
-Partial function application is used in various places in the code, allowing for more concise expressions.
+#####Pattern matching:
+Extensive use of pattern matching on data constructors for control flow.
 
-Pattern matching and guards:
-Extensive use of pattern matching on data constructors and guards for control flow.
-
-Custom data types and type aliases:
+##### Custom data types and type aliases:
 Custom data types like GameState, Command, and Board, and type aliases like Text are used to enhance code readability and maintainability.
-These techniques contribute to the expressiveness, conciseness, and readability of the code, leveraging the power of Haskell as a functional programming language.
+These techniques contribute to the expressiveness, conciseness, and readability of the code.
 
 
 
 
-Tech used in TicTacToe:
+### Tech used in TicTacToe:
 
 The TicTacToe code employs various techniques to enhance its functionality and clarity.
 
@@ -50,7 +55,7 @@ List comprehension is used in the availableMoves function to generate the list o
 Finally, higher-order functions such as map, maximumBy, minimumBy, and any are used throughout the code. These functions take other functions as arguments, which is an important feature of functional programming in Haskell, enabling concise, expressive, and maintainable code.
 
 
-Parser tech
+### Parser tech
 
 Parser Combinators: The code makes use of parser combinators provided by the Megaparsec library, such as (<|>), try, string, space1, and L.decimal. Parser combinators allow you to build complex parsers by combining smaller, simpler parsers in a modular and composable way. This makes the code more maintainable and easier to expand for additional commands.
 
@@ -63,7 +68,7 @@ Alternative Combinator: The <|> combinator is used in the commandParser function
 Modularity: The code is organized into modular functions, each responsible for parsing a specific command. This makes it easy to extend the parser with new commands in the future, simply by defining new parsing functions and combining them with the existing ones.
 
 
-type tech
+### type tech
 
 The code for the Tic Tac Toe game employs various techniques to make it more expressive and easy to understand.
 
