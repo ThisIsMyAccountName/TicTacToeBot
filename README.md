@@ -13,16 +13,16 @@ To get started, you'll need to clone the project's repository onto your local ma
 
 
 #### Edit the bot key
-The next step is to edit the bot key in the Tokens.hs file. You should have received a bot key from the Discord Developer Portal when you registered your bot. Open the Tokens.hs file in your preferred code editor and find the following line:
+The next step is to edit the bot key in the app/Tokens.hs file. You should have received a bot key from the Discord Developer Portal when you registered your bot. Open the Tokens.hs file in your preferred code editor and find the following line:
 
-`getToken = TIO.readFile "Path_To_A_.Secret_file" `
+`getToken = TIO.readFile "Path_To_token" ` NOTE:  file type is `.secret`
 
 #### Change the ready channel
-The bot is currently set up to send a message in a channel called "ready". If you'd like to change the channel where the bot sends the message or disable the ready message, you'll need to modify the readyChannel variable in the Main.hs file. You can do this by replacing `readyChannel = 1084744206238621747` with the ID of the channel you want to use or by changing `sendOnReady` to False.
+The bot is currently set up to send a message in a channel called "ready". If you'd like to change the channel where the bot sends the message or disable the ready message, you'll need to modify the readyChannel variable in the app/Main.hs file. You can do this by replacing `readyChannel = 1084744206238621747` with the ID of the channel you want to use or by changing `sendOnReady` to False.
 
 
 #### Change the emote
-The bot sends a message with a custom emote at the end. If you'd like to change the emote to something else, you'll need to modify the emote variable in the Main.hs file. You can do this by replacing ":robot:" with the emote you want to use:
+The bot sends a message with a custom emote at the end. If you'd like to change the emote to something else, you'll need to modify the emote variable in the app/Main.hs file. You can do this by replacing ":robot:" with the emote you want to use:
 
 
 `emote = ":robot:"`
