@@ -109,13 +109,16 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
                       if xWinner || isWinner board O
                         then do
                           updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                          deleteTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar
                           editIntercation interactionId interactionToken ((if xWinner then userName userID1 else userName user2) <> " Wins the game!") afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
                         else if isDraw board
                           then do
                             updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                            deleteTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar
                             editIntercation interactionId interactionToken "Game ended in a draw" afterMove True disableAllButtons 3 3 text [restartButtonTwoPlayer]
                           else do
                             updateTwoPlayerMapState userID2 twoPlayerGameStatesVar ((userId userID1), afterMove)
+                            deleteTwoPlayerMapState (userId userID1) twoPlayerGameStatesVar
                             editIntercation interactionId interactionToken ((if player == X then userName userID1 else userName user2) <> "'s turn") afterMove True disableUserButtons 3 3 text [restartButtonTwoPlayer]
                   pure ()
     MessageCreate m -> when (not (fromBot m)) $ do
