@@ -7,7 +7,7 @@ import Control.Monad (when, void)
 import Control.Monad.IO.Class (MonadIO)
 import UnliftIO (liftIO)
 import UnliftIO.Concurrent
-import Data.Text (Text, isPrefixOf, toLower)
+import Data.Text (Text, toLower)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -24,6 +24,7 @@ import qualified Discord.Requests as R
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVarIO, modifyTVar')
 
+import Tokens (getToken)
 import DataTypes
 import TicTacToe (newGame, playMove, isWinner, isDraw, playBotMove)
 import Parser (commandParser)
@@ -44,8 +45,9 @@ eventHandler :: TVar (GameState) -> TVar (Map.Map UserId (UserId, GameState)) ->
 eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
     Ready _ _ _ _ _ _ _ -> do
         echo "Bot ready"
-        void $ restCall (R.CreateMessage 1084744206238621747 "<:pong:1084793665525919804>")
-        pure () 
+        if sendOnReady 
+          then void $ restCall (R.CreateMessage readyChannel emote) --Change to whatever emote, or just delete if you dont want a ping everytime the bot starts
+          else pure ()
     InteractionCreate InteractionComponent {
       componentData = click@ButtonData {componentDataCustomId = (T.take 3 -> "bot")},
       interactionUser = MemberOrUser user,
@@ -117,33 +119,28 @@ eventHandler gameStatesVar twoPlayerGameStatesVar event = case event of
                             editIntercation interactionId interactionToken ((if player == X then userName userID1 else userName user2) <> "'s turn") afterMove True disableUserButtons 3 3 text [restartButtonTwoPlayer]
                   pure ()
     MessageCreate m -> when (not (fromBot m)) $ do
-        case parse commandParser "" (T.unpack $ messageContent m) of
-          Left bundle -> sendMessage m "Invalid command\n!help to see all commands"
-          Right command -> do
-            void $ restCall (R.CreateReaction (messageChannelId m, messageId m) "<:pong:1084793665525919804>")
-            currentGameStates <- liftIO $ readTVarIO gameStatesVar
-            case command of
-              PlayBot -> do
-                void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
-                  def { 
-                        R.messageDetailedContent = ":x: to move against bot",
-                        R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 "bot " ++ [restartButton]
-                      }))
-                pure () 
-              PlayUser playerID -> do
-                updateTwoPlayerMapState (userId $ messageAuthor m) twoPlayerGameStatesVar (playerID, newGame)
-                void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
-                  def { 
-                        R.messageDetailedContent = userName (messageAuthor m) <> " to play as :x:",
-                        R.messageDetailedComponents = Just $ boardToActionRows newGame 3 3 "two " ++ [restartButtonTwoPlayer]
-                      }))
-                
-                pure()
-              Help -> do
-                sendMessage m "!play to play against bot\n!play @user to play against another user\n!help to see all commands"
-                pure ()
-
-                      
+      case parse commandParser "" (T.unpack $ messageContent m) of
+        Left bundle -> sendMessage m "Invalid command\n!help to see all commands"
+        Right command -> do
+          void $ restCall (R.CreateReaction (messageChannelId m, messageId m) emote)
+          currentGameStates <- liftIO $ readTVarIO gameStatesVar
+          case command of
+            PlayBot -> do
+              void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
+                def { 
+                      R.messageDetailedContent = ":x: to move against bot",
+                      R.messageDetailedComponents = Just $ boardToActionRows currentGameStates 3 3 "bot " ++ [restartButton]
+                    }))
+              pure () 
+            PlayUser playerID -> do
+              updateTwoPlayerMapState (userId $ messageAuthor m) twoPlayerGameStatesVar (playerID, newGame)
+              void $ restCall (R.CreateMessageDetailed (messageChannelId m) (
+                def { 
+                      R.messageDetailedContent = userName (messageAuthor m) <> " to play as :x:",
+                      R.messageDetailedComponents = Just $ boardToActionRows newGame 3 3 "two " ++ [restartButtonTwoPlayer]
+                    }))
+              pure ()
+            Help -> sendMessage m "!play to play against bot\n!play @user to play against another user\n!help to see all commands"     
     _ -> pure ()
 
 -- GAME STATE STORAGE
@@ -168,8 +165,14 @@ deleteTwoPlayerMapState userID1 gameStatesVar = liftIO $ atomically $ modifyTVar
 
 -- UTILS
 
-getToken :: IO T.Text
-getToken = TIO.readFile "../keys/auth-token.secret"
+readyChannel :: ChannelId
+readyChannel = 1084744206238621747
+
+sendOnReady :: Bool
+sendOnReady = True
+
+emote :: Text
+emote = ":robot:"
 
 echo :: MonadIO m => Text -> m ()
 echo = liftIO . TIO.putStrLn
